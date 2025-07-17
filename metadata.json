@@ -1,0 +1,6 @@
+{
+  "name": "Optom POS - Savdo Boshqaruv Tizimi",
+  "description": "A comprehensive Point of Sale (POS) application for wholesale businesses, built with React and TypeScript. It helps manage sales, products, inventory, customers, and suppliers, and provides insightful reports.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
