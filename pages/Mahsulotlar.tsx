@@ -1,39 +1,10 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext.tsx';
-import { Product, Unit } from '../types.ts';
+import { Product } from '../types.ts';
 import Modal from '../components/Modal.tsx';
 import { PlusCircle, Edit, Trash2, AlertTriangle } from 'lucide-react';
 
-const AddUnitModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (name: string) => void;
-}> = ({ isOpen, onClose, onSave }) => {
-    const [name, setName] = useState('');
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSave(name);
-        setName('');
-    };
-
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Yangi o'lchov birligi">
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                    <label className="block text-sm font-medium">Birlik nomi</label>
-                    <input type="text" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full p-2 border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700"/>
-                </div>
-                <div className="flex justify-end space-x-2 pt-4">
-                    <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 dark:bg-gray-600 rounded-md">Bekor qilish</button>
-                    <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md">Saqlash</button>
-                </div>
-            </form>
-        </Modal>
-    );
-};
-
-const ProductForm: React.FC<{ product?: Product; onSave: (product: Omit<Product, 'id'> | Product) => void; onClose: () => void }> = ({ product, onSave, onClose }) => {
+const ProductForm: React.FC<{ product?: Product; onSave: (product: Partial<Product>) => void; onClose: () => void }> = ({ product, onSave, onClose }) => {
     const { units, addUnit } = useAppContext();
     const [isUnitModalOpen, setUnitModalOpen] = useState(false);
     const [formData, setFormData] = useState<Partial<Product>>({
@@ -56,11 +27,7 @@ const ProductForm: React.FC<{ product?: Product; onSave: (product: Omit<Product,
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (product) {
-            onSave({ ...product, ...formData });
-        } else {
-            onSave(formData);
-        }
+        onSave(formData);
     };
     
     const handleSaveNewUnit = async (newUnitName: string) => {
@@ -69,21 +36,27 @@ const ProductForm: React.FC<{ product?: Product; onSave: (product: Omit<Product,
                 const newUnit = await addUnit({ name: newUnitName.trim() });
                 setFormData(prev => ({ ...prev, unit: newUnit.name }));
                 setUnitModalOpen(false);
-            } catch (error) {
-                alert("Birlik qo'shishda xatolik");
-            }
-        } else {
-            alert("Bunday birlik mavjud yoki nom kiritilmadi.");
-        }
+            } catch (error) { alert("Birlik qo'shishda xatolik"); }
+        } else { alert("Bunday birlik mavjud yoki nom kiritilmadi."); }
     };
 
     if (!units) return null;
-
     return (
         <>
-        <AddUnitModal isOpen={isUnitModalOpen} onClose={() => setUnitModalOpen(false)} onSave={handleSaveNewUnit} />
+        <Modal isOpen={isUnitModalOpen} onClose={() => setUnitModalOpen(false)} title="Yangi o'lchov birligi">
+            <form onSubmit={(e) => { e.preventDefault(); handleSaveNewUnit(e.currentTarget.querySelector('input')!.value); }} className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium">Birlik nomi</label>
+                    <input type="text" required className="mt-1 block w-full p-2 border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700"/>
+                </div>
+                <div className="flex justify-end space-x-2 pt-4">
+                    <button type="button" onClick={() => setUnitModalOpen(false)} className="px-4 py-2 bg-gray-200 dark:bg-gray-600 rounded-md">Bekor qilish</button>
+                    <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md">Saqlash</button>
+                </div>
+            </form>
+        </Modal>
         <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Mahsulot nomi</label>
                     <input type="text" name="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700"/>
@@ -112,11 +85,11 @@ const ProductForm: React.FC<{ product?: Product; onSave: (product: Omit<Product,
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Sotib olish narxi</label>
-                    <input type="number" step="any" name="purchasePrice" value={formData.purchasePrice as number} onChange={handleChange} required className="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700"/>
+                    <input type="number" step="any" name="purchasePrice" value={String(formData.purchasePrice)} onChange={handleChange} required className="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700"/>
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Sotish narxi</label>
-                    <input type="number" step="any" name="salePrice" value={formData.salePrice as number} onChange={handleChange} required className="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700"/>
+                    <input type="number" step="any" name="salePrice" value={String(formData.salePrice)} onChange={handleChange} required className="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700"/>
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Ombordagi qoldiq</label>
@@ -141,7 +114,7 @@ const ProductForm: React.FC<{ product?: Product; onSave: (product: Omit<Product,
 };
 
 const Mahsulotlar = () => {
-    const { products, addProduct, updateProduct, settings } = useAppContext();
+    const { products, addProduct, updateProduct, deleteProduct, settings } = useAppContext();
     const [isModalOpen, setModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | undefined>(undefined);
     const [searchTerm, setSearchTerm] = useState('');
@@ -164,8 +137,14 @@ const Mahsulotlar = () => {
                 await addProduct(productData);
             }
             handleCloseModal();
-        } catch (error) {
-            alert("Mahsulotni saqlashda xatolik yuz berdi");
+        } catch (error) { alert("Mahsulotni saqlashda xatolik yuz berdi"); }
+    };
+
+    const handleDeleteProduct = async (id: string) => {
+        if (window.confirm("Haqiqatan ham bu mahsulotni o'chirmoqchimisiz?")) {
+            try {
+                await deleteProduct(id);
+            } catch (error) { alert("Mahsulotni o'chirishda xatolik yuz berdi. Bu mahsulot savdolarda ishlatilgan bo'lishi mumkin."); }
         }
     };
 
@@ -217,7 +196,7 @@ const Mahsulotlar = () => {
                                 </td>
                                 <td className="px-6 py-4 text-right">
                                     <button onClick={() => handleOpenModal(p)} className="p-1 text-blue-600 hover:text-blue-800"><Edit size={18} /></button>
-                                    <button className="p-1 text-red-600 hover:text-red-800 ml-2"><Trash2 size={18} /></button>
+                                    <button onClick={() => handleDeleteProduct(p.id)} className="p-1 text-red-600 hover:text-red-800 ml-2"><Trash2 size={18} /></button>
                                 </td>
                             </tr>
                         ))}

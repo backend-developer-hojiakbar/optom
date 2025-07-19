@@ -25,14 +25,19 @@ interface AppContextType {
     updateSettings: (settingsData: Partial<StoreSettings>) => Promise<StoreSettings>;
     addEmployee: (data: Partial<Employee>) => Promise<Employee>;
     updateEmployee: (id: string, data: Partial<Employee>) => Promise<Employee>;
+    deleteEmployee: (id: string) => Promise<void>;
     addRole: (data: Partial<Role>) => Promise<Role>;
     updateRole: (id: string, data: Partial<Role>) => Promise<Role>;
+    deleteRole: (id: string) => Promise<void>;
     addProduct: (data: Partial<Product>) => Promise<Product>;
     updateProduct: (id: string, data: Partial<Product>) => Promise<Product>;
+    deleteProduct: (id: string) => Promise<void>;
     addCustomer: (data: Partial<Customer>) => Promise<Customer>;
     updateCustomer: (id: string, data: Partial<Customer>) => Promise<Customer>;
+    deleteCustomer: (id: string) => Promise<void>;
     addSupplier: (data: Partial<Supplier>) => Promise<Supplier>;
     updateSupplier: (id: string, data: Partial<Supplier>) => Promise<Supplier>;
+    deleteSupplier: (id: string) => Promise<void>;
     addUnit: (data: { name: string }) => Promise<Unit>;
     deleteUnit: (id: string) => Promise<void>;
 }
@@ -154,14 +159,19 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         createSale, addGoodsReceipt, payDebt, updateSettings,
         addEmployee: (data) => addEntity('employees', data),
         updateEmployee: (id, data) => updateEntity('employees', id, data),
+        deleteEmployee: (id) => deleteEntity('employees', id),
         addRole: (data) => addEntity('roles', data),
         updateRole: (id, data) => updateEntity('roles', id, data),
+        deleteRole: (id) => deleteEntity('roles', id),
         addProduct: (data) => addEntity('products', data),
         updateProduct: (id, data) => updateEntity('products', id, data),
+        deleteProduct: (id) => deleteEntity('products', id),
         addCustomer: (data) => addEntity('customers', data),
         updateCustomer: (id, data) => updateEntity('customers', id, data),
+        deleteCustomer: (id) => deleteEntity('customers', id),
         addSupplier: (data) => addEntity('suppliers', data),
         updateSupplier: (id, data) => updateEntity('suppliers', id, data),
+        deleteSupplier: (id) => deleteEntity('suppliers', id),
         addUnit: (data) => addEntity('units', data),
         deleteUnit: (id) => deleteEntity('units', id),
     };

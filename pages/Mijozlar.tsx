@@ -5,21 +5,9 @@ import Modal from '../components/Modal.tsx';
 import { PlusCircle, Edit, Trash2, Eye } from 'lucide-react';
 
 const CustomerForm: React.FC<{ customer?: Customer; onSave: (customer: Partial<Customer>) => void; onClose: () => void }> = ({ customer, onSave, onClose }) => {
-    const [formData, setFormData] = useState({
-        name: customer?.name || '',
-        phone: customer?.phone || '',
-        address: customer?.address || '',
-    });
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSave(formData);
-    };
-    
+    const [formData, setFormData] = useState({ name: customer?.name || '', phone: customer?.phone || '', address: customer?.address || '' });
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setFormData({ ...formData, [e.target.name]: e.target.value });
+    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(formData); };
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -50,16 +38,8 @@ const DebtPaymentForm: React.FC<{ customer: Customer; onClose: () => void }> = (
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (amount <= 0 || amount > customerDebt) {
-            alert("Noto'g'ri summa kiritildi.");
-            return;
-        }
-        try {
-            await payDebt(customer.id, amount, paymentType);
-            onClose();
-        } catch (error) {
-            alert("To'lovni amalga oshirishda xatolik");
-        }
+        if (amount <= 0 || amount > customerDebt) { alert("Noto'g'ri summa kiritildi."); return; }
+        try { await payDebt(customer.id, amount, paymentType); onClose(); } catch (error) { alert("To'lovni amalga oshirishda xatolik"); }
     };
 
     return (
@@ -135,47 +115,29 @@ const CustomerDetailsModal: React.FC<{ customer: Customer; onClose: () => void; 
     );
 };
 
-
 const Mijozlar = () => {
-    const { customers, addCustomer, updateCustomer } = useAppContext();
+    const { customers, addCustomer, updateCustomer, deleteCustomer } = useAppContext();
     const [isFormModalOpen, setFormModalOpen] = useState(false);
     const [isDetailsModalOpen, setDetailsModalOpen] = useState(false);
     const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | undefined>(undefined);
     const [searchTerm, setSearchTerm] = useState('');
 
-    const handleOpenFormModal = (customer?: Customer) => {
-        setSelectedCustomer(customer);
-        setFormModalOpen(true);
-    };
-
-    const handleOpenDetailsModal = (customer: Customer) => {
-        setSelectedCustomer(customer);
-        setDetailsModalOpen(true);
-    };
-
-    const handleOpenPaymentModal = () => {
-        setDetailsModalOpen(false);
-        setPaymentModalOpen(true);
-    };
-
-    const handleCloseAllModals = () => {
-        setSelectedCustomer(undefined);
-        setFormModalOpen(false);
-        setDetailsModalOpen(false);
-        setPaymentModalOpen(false);
-    };
+    const handleOpenFormModal = (customer?: Customer) => { setSelectedCustomer(customer); setFormModalOpen(true); };
+    const handleOpenDetailsModal = (customer: Customer) => { setSelectedCustomer(customer); setDetailsModalOpen(true); };
+    const handleOpenPaymentModal = () => { setDetailsModalOpen(false); setPaymentModalOpen(true); };
+    const handleCloseAllModals = () => { setSelectedCustomer(undefined); setFormModalOpen(false); setDetailsModalOpen(false); setPaymentModalOpen(false); };
 
     const handleSaveCustomer = async (customerData: Partial<Customer>) => {
         try {
-            if (selectedCustomer) {
-                await updateCustomer(selectedCustomer.id, customerData);
-            } else {
-                await addCustomer(customerData);
-            }
+            if (selectedCustomer) { await updateCustomer(selectedCustomer.id, customerData); } else { await addCustomer(customerData); }
             handleCloseAllModals();
-        } catch (error) {
-            alert("Mijozni saqlashda xatolik");
+        } catch (error) { alert("Mijozni saqlashda xatolik"); }
+    };
+
+    const handleDeleteCustomer = async (id: string) => {
+        if (window.confirm("Haqiqatan ham bu mijozni o'chirmoqchimisiz?")) {
+            try { await deleteCustomer(id); } catch (error) { alert("Mijozni o'chirishda xatolik yuz berdi. Bu mijozning qarzi yoki savdo tarixi bo'lishi mumkin."); }
         }
     };
 
@@ -184,13 +146,7 @@ const Mijozlar = () => {
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center">
-                <input
-                    type="text"
-                    placeholder="Mijoz qidirish..."
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                    className="p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600"
-                />
+                <input type="text" placeholder="Mijoz qidirish..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600" />
                 <button onClick={() => handleOpenFormModal()} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
                     <PlusCircle size={18} className="mr-2" />
                     Yangi mijoz
@@ -215,7 +171,7 @@ const Mijozlar = () => {
                                 <td className="px-6 py-4 text-right">
                                     <button onClick={() => handleOpenDetailsModal(c)} className="p-1 text-gray-600 dark:text-gray-300 hover:text-gray-800"><Eye size={18} /></button>
                                     <button onClick={() => handleOpenFormModal(c)} className="p-1 text-blue-600 hover:text-blue-800 ml-2"><Edit size={18} /></button>
-                                    <button className="p-1 text-red-600 hover:text-red-800 ml-2"><Trash2 size={18} /></button>
+                                    <button onClick={() => handleDeleteCustomer(c.id)} className="p-1 text-red-600 hover:text-red-800 ml-2"><Trash2 size={18} /></button>
                                 </td>
                             </tr>
                         ))}

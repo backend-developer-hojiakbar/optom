@@ -5,22 +5,9 @@ import Modal from '../components/Modal.tsx';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
 
 const SupplierForm: React.FC<{ supplier?: Supplier; onSave: (supplier: Partial<Supplier>) => void; onClose: () => void }> = ({ supplier, onSave, onClose }) => {
-    const [formData, setFormData] = useState({
-        name: supplier?.name || '',
-        contactPerson: supplier?.contactPerson || '',
-        phone: supplier?.phone || '',
-        address: supplier?.address || '',
-        bankDetails: supplier?.bankDetails || '',
-    });
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSave(formData);
-    };
+    const [formData, setFormData] = useState({ name: supplier?.name || '', contactPerson: supplier?.contactPerson || '', phone: supplier?.phone || '', address: supplier?.address || '', bankDetails: supplier?.bankDetails || '' });
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setFormData({ ...formData, [e.target.name]: e.target.value });
+    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(formData); };
     
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -55,31 +42,24 @@ const SupplierForm: React.FC<{ supplier?: Supplier; onSave: (supplier: Partial<S
 };
 
 const YetkazibBeruvchilar = () => {
-    const { suppliers, addSupplier, updateSupplier } = useAppContext();
+    const { suppliers, addSupplier, updateSupplier, deleteSupplier } = useAppContext();
     const [isModalOpen, setModalOpen] = useState(false);
     const [editingSupplier, setEditingSupplier] = useState<Supplier | undefined>(undefined);
     const [searchTerm, setSearchTerm] = useState('');
 
-    const handleOpenModal = (supplier?: Supplier) => {
-        setEditingSupplier(supplier);
-        setModalOpen(true);
-    };
-
-    const handleCloseModal = () => {
-        setEditingSupplier(undefined);
-        setModalOpen(false);
-    };
+    const handleOpenModal = (supplier?: Supplier) => { setEditingSupplier(supplier); setModalOpen(true); };
+    const handleCloseModal = () => { setEditingSupplier(undefined); setModalOpen(false); };
 
     const handleSaveSupplier = async (supplierData: Partial<Supplier>) => {
         try {
-            if (editingSupplier) {
-                await updateSupplier(editingSupplier.id, supplierData);
-            } else {
-                await addSupplier(supplierData);
-            }
+            if (editingSupplier) { await updateSupplier(editingSupplier.id, supplierData); } else { await addSupplier(supplierData); }
             handleCloseModal();
-        } catch (error) {
-            alert("Yetkazib beruvchini saqlashda xatolik");
+        } catch (error) { alert("Yetkazib beruvchini saqlashda xatolik"); }
+    };
+    
+    const handleDeleteSupplier = async (id: string) => {
+        if (window.confirm("Haqiqatan ham bu yetkazib beruvchini o'chirmoqchimisiz?")) {
+            try { await deleteSupplier(id); } catch (error) { alert("Yetkazib beruvchini o'chirishda xatolik yuz berdi. U kirim hujjatlarida ishlatilgan bo'lishi mumkin."); }
         }
     };
 
@@ -88,13 +68,7 @@ const YetkazibBeruvchilar = () => {
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center">
-                <input
-                    type="text"
-                    placeholder="Yetkazib beruvchi qidirish..."
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                    className="p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600"
-                />
+                <input type="text" placeholder="Yetkazib beruvchi qidirish..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600"/>
                 <button onClick={() => handleOpenModal()} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
                     <PlusCircle size={18} className="mr-2" />
                     Yangi yetkazib beruvchi
@@ -118,7 +92,7 @@ const YetkazibBeruvchilar = () => {
                                 <td className="px-6 py-4">{s.phone}</td>
                                 <td className="px-6 py-4 text-right">
                                     <button onClick={() => handleOpenModal(s)} className="p-1 text-blue-600 hover:text-blue-800 ml-2"><Edit size={18} /></button>
-                                    <button className="p-1 text-red-600 hover:text-red-800 ml-2"><Trash2 size={18} /></button>
+                                    <button onClick={() => handleDeleteSupplier(s.id)} className="p-1 text-red-600 hover:text-red-800 ml-2"><Trash2 size={18} /></button>
                                 </td>
                             </tr>
                         ))}

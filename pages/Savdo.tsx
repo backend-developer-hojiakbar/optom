@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext.tsx';
 import { Product, CartItem, PaymentType, Sale, Customer, SalePayment } from '../types.ts';
 import { PlusCircle, MinusCircle, XCircle, Search, UserPlus, Printer, CheckCircle, Trash2, Home, ShoppingCart, AlertCircle } from 'lucide-react';
@@ -65,7 +65,7 @@ const PaymentModalContent: React.FC<{
     const paidAmount = useMemo(() => payments.reduce((sum, p) => sum + p.amount, 0), [payments]);
     const remainingAmount = useMemo(() => totalAmount - paidAmount, [totalAmount, paidAmount]);
 
-    React.useEffect(() => {
+    useEffect(() => {
         setCurrentPart(prev => ({ ...prev, amount: remainingAmount > 0 ? remainingAmount : 0 }));
     }, [remainingAmount]);
     
@@ -172,32 +172,20 @@ const Savdo = () => {
     const receiptContent = receiptRef.current?.innerHTML;
     if (receiptContent) {
         const printFrame = document.createElement('iframe');
-        printFrame.style.position = 'absolute';
-        printFrame.style.width = '0';
-        printFrame.style.height = '0';
-        printFrame.style.border = '0';
+        printFrame.style.position = 'absolute'; printFrame.style.width = '0'; printFrame.style.height = '0'; printFrame.style.border = '0';
         document.body.appendChild(printFrame);
-
         const frameDoc = printFrame.contentWindow?.document;
         if (frameDoc) {
             frameDoc.open();
             frameDoc.write(`
-                <html>
-                    <head>
-                        <title>Chek</title>
-                        <style>
-                            @media print {
-                                body { font-family: monospace; font-size: 12px; color: black; margin: 0; padding: 10px; width: 288px; }
-                                .text-center { text-align: center; } .font-bold { font-weight: bold; } .text-sm { font-size: 13px; }
-                                .my-2 { margin-top: 8px; margin-bottom: 8px; } .mt-2 { margin-top: 8px; }
-                                hr { border: none; border-top: 1px dashed black; } table { width: 100%; border-collapse: collapse; }
-                                th, td { padding: 2px 0; } .text-left { text-align: left; } .text-right { text-align: right; }
-                                .w-1\\/2 { width: 50%; } .flex { display: flex; } .justify-between { justify-content: space-between; }
-                            }
-                        </style>
-                    </head>
-                    <body>${receiptContent}</body>
-                </html>
+                <html><head><title>Chek</title><style>
+                @media print { body { font-family: monospace; font-size: 12px; color: black; margin: 0; padding: 10px; width: 288px; }
+                .text-center { text-align: center; } .font-bold { font-weight: bold; } .text-sm { font-size: 13px; }
+                .my-2 { margin-top: 8px; margin-bottom: 8px; } .mt-2 { margin-top: 8px; }
+                hr { border: none; border-top: 1px dashed black; } table { width: 100%; border-collapse: collapse; }
+                th, td { padding: 2px 0; } .text-left { text-align: left; } .text-right { text-align: right; }
+                .w-1\\/2 { width: 50%; } .flex { display: flex; } .justify-between { justify-content: space-between; } }
+                </style></head><body>${receiptContent}</body></html>
             `);
             frameDoc.close();
             setTimeout(() => {
@@ -236,15 +224,8 @@ const Savdo = () => {
     }
   };
 
-  const removeFromCart = (productId: string) => {
-    setCart(cart.filter(item => item.productId !== productId));
-  };
-  
-  const clearCart = () => {
-    setCart([]);
-    setDiscount(0);
-    setSelectedCustomerId('');
-  }
+  const removeFromCart = (productId: string) => setCart(cart.filter(item => item.productId !== productId));
+  const clearCart = () => { setCart([]); setDiscount(0); setSelectedCustomerId(''); }
 
   const subtotal = useMemo(() => cart.reduce((acc, item) => acc + item.price * item.quantity, 0), [cart]);
   const [discount, setDiscount] = useState(0);
@@ -255,11 +236,11 @@ const Savdo = () => {
     const saleData = { items: cart, subtotal, discount, total, payments, customerId: selectedCustomerId || undefined };
     try {
         const createdSale = await createSale(saleData);
-        setPaymentModalOpen(false);
         setLastSale(createdSale);
+        setPaymentModalOpen(false);
         setReceiptModalOpen(true);
         clearCart();
-        setTimeout(() => handlePrint(), 300); // Eng muhim o'zgarish shu yerda
+        setTimeout(() => handlePrint(), 300);
     } catch(error: any) {
         console.error("Savdoni amalga oshirishda xatolik:", error.response?.data || error.message);
         const errorMessages = error.response?.data ? 
@@ -292,23 +273,13 @@ const Savdo = () => {
                 <div className="p-4 border-b dark:border-gray-700">
                     <div className="relative">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={24} />
-                        <input
-                        type="text"
-                        placeholder="Mahsulotni nomi yoki shtrix-kodi bo'yicha qidirish..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full p-4 pl-14 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-lg"
-                        />
+                        <input type="text" placeholder="Mahsulotni nomi yoki shtrix-kodi bo'yicha qidirish..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full p-4 pl-14 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-lg"/>
                     </div>
                 </div>
                 <div className="flex-grow overflow-y-auto">
                     <table className="w-full text-left text-gray-500 dark:text-gray-400">
                         <thead className="text-base text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400 sticky top-0">
-                            <tr>
-                                <th scope="col" className="px-6 py-4">Nomi</th>
-                                <th scope="col" className="px-6 py-4">Qoldiq</th>
-                                <th scope="col" className="px-6 py-4">Narxi</th>
-                            </tr>
+                            <tr><th scope="col" className="px-6 py-4">Nomi</th><th scope="col" className="px-6 py-4">Qoldiq</th><th scope="col" className="px-6 py-4">Narxi</th></tr>
                         </thead>
                         <tbody className="text-lg">
                             {filteredProducts.map(product => (
@@ -327,34 +298,26 @@ const Savdo = () => {
                     <h2 className="text-2xl font-bold">Savatcha</h2>
                 </div>
                 <div className="flex-grow overflow-y-auto p-4 space-y-3">
-                {cart.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                        <ShoppingCart size={64} />
-                        <p className="mt-4 text-lg">Savatcha bo'sh</p>
-                    </div>
-                ) : (
-                    cart.map(item => {
-                        const productInCart = products.find(p => p.id === item.productId);
-                        const isStockLow = productInCart && item.quantity > productInCart.stock;
-                        return (
-                        <div key={item.productId} className={`flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 ${isStockLow ? 'bg-red-500/10' : ''}`}>
-                            <div className="flex-grow">
-                                <p className="font-semibold">{getProductName(item.productId)}</p>
-                                <div className="flex items-center gap-2">
-                                    <p className="text-sm text-gray-500">{item.price.toLocaleString()} x {item.quantity}</p>
-                                    {isStockLow && <AlertCircle className="h-4 w-4 text-red-500" title={`Qoldiqda yetarli emas! Mavjud: ${productInCart.stock}`}/>}
-                                </div>
+                {cart.length === 0 ? (<div className="flex flex-col items-center justify-center h-full text-gray-400"><ShoppingCart size={64} /><p className="mt-4 text-lg">Savatcha bo'sh</p></div>) 
+                : (cart.map(item => { const productInCart = products.find(p => p.id === item.productId); const isStockLow = productInCart && item.quantity > productInCart.stock;
+                    return (
+                    <div key={item.productId} className={`flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 ${isStockLow ? 'bg-red-500/10' : ''}`}>
+                        <div className="flex-grow">
+                            <p className="font-semibold">{getProductName(item.productId)}</p>
+                            <div className="flex items-center gap-2">
+                                <p className="text-sm text-gray-500">{item.price.toLocaleString()} x {item.quantity}</p>
+                                {isStockLow && <AlertCircle className="h-4 w-4 text-red-500" title={`Qoldiqda yetarli emas! Mavjud: ${productInCart.stock}`}/>}
                             </div>
-                            <div className="flex items-center space-x-3">
-                                <button onClick={() => updateQuantity(item.productId, item.quantity - 1)}><MinusCircle size={22} className="text-red-500" /></button>
-                                <input type="number" value={item.quantity} onChange={(e) => updateQuantity(item.productId, parseInt(e.target.value) || 0)} className="text-lg font-bold w-12 text-center bg-transparent border-b dark:border-gray-600 focus:outline-none" />
-                                <button onClick={() => updateQuantity(item.productId, item.quantity + 1)}><PlusCircle size={22} className="text-green-500" /></button>
-                            </div>
-                            <p className="font-bold w-28 text-right text-lg">{(item.price * item.quantity).toLocaleString()}</p>
-                            <button onClick={() => removeFromCart(item.productId)}><XCircle size={22} className="text-gray-400 hover:text-red-500" /></button>
                         </div>
-                    )})
-                )}
+                        <div className="flex items-center space-x-3">
+                            <button onClick={() => updateQuantity(item.productId, item.quantity - 1)}><MinusCircle size={22} className="text-red-500" /></button>
+                            <input type="number" value={item.quantity} onChange={(e) => updateQuantity(item.productId, parseInt(e.target.value) || 0)} className="text-lg font-bold w-12 text-center bg-transparent border-b dark:border-gray-600 focus:outline-none" />
+                            <button onClick={() => updateQuantity(item.productId, item.quantity + 1)}><PlusCircle size={22} className="text-green-500" /></button>
+                        </div>
+                        <p className="font-bold w-28 text-right text-lg">{(item.price * item.quantity).toLocaleString()}</p>
+                        <button onClick={() => removeFromCart(item.productId)}><XCircle size={22} className="text-gray-400 hover:text-red-500" /></button>
+                    </div>
+                )}))}
                 </div>
             </div>
             <div className="w-3/12 flex flex-col bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 space-y-6">
@@ -372,29 +335,15 @@ const Savdo = () => {
                     <div>
                         <h3 className="text-xl font-semibold mb-2">Xulosa</h3>
                         <div className="space-y-3 text-lg">
-                            <div className="flex justify-between">
-                                <span className="text-gray-600 dark:text-gray-300">Jami:</span>
-                                <span className="font-medium">{subtotal.toLocaleString()} {settings.currency}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-600 dark:text-gray-300">Chegirma:</span>
-                                <input type="number" value={discount || ''} onChange={e => setDiscount(Number(e.target.value))} className="w-28 p-2 border rounded-md text-right dark:bg-gray-700 dark:border-gray-600"/>
-                            </div>
-                            <div className="flex justify-between font-bold text-2xl border-t dark:border-gray-600 pt-3 mt-3">
-                                <span className="text-gray-800 dark:text-white">To'lash uchun:</span>
-                                <span className="text-blue-600 dark:text-blue-400">{total.toLocaleString()}</span>
-                            </div>
+                            <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-300">Jami:</span><span className="font-medium">{subtotal.toLocaleString()} {settings.currency}</span></div>
+                            <div className="flex justify-between items-center"><span className="text-gray-600 dark:text-gray-300">Chegirma:</span><input type="number" value={discount || ''} onChange={e => setDiscount(Number(e.target.value))} className="w-28 p-2 border rounded-md text-right dark:bg-gray-700 dark:border-gray-600"/></div>
+                            <div className="flex justify-between font-bold text-2xl border-t dark:border-gray-600 pt-3 mt-3"><span className="text-gray-800 dark:text-white">To'lash uchun:</span><span className="text-blue-600 dark:text-blue-400">{total.toLocaleString()}</span></div>
                         </div>
                     </div>
                 </div>
-
                 <div className="flex-shrink-0 space-y-3">
-                    <button onClick={clearCart} disabled={cart.length === 0} className="w-full py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 text-lg font-semibold flex items-center justify-center gap-2 disabled:opacity-50">
-                        <Trash2 size={20} /> Bekor qilish
-                    </button>
-                    <button onClick={() => setPaymentModalOpen(true)} disabled={cart.length === 0} className="w-full py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 font-semibold text-lg disabled:opacity-50">
-                        To'lov
-                    </button>
+                    <button onClick={clearCart} disabled={cart.length === 0} className="w-full py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 text-lg font-semibold flex items-center justify-center gap-2 disabled:opacity-50"><Trash2 size={20} /> Bekor qilish</button>
+                    <button onClick={() => setPaymentModalOpen(true)} disabled={cart.length === 0} className="w-full py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 font-semibold text-lg disabled:opacity-50">To'lov</button>
                 </div>
             </div>
         </main>
