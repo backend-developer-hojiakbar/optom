@@ -44,8 +44,8 @@ export interface Product {
   name: string;
   barcode?: string;
   unit: string;
-  purchasePrice: number | string;
-  salePrice: number | string;
+  purchasePrice: number;
+  salePrice: number;
   stock: number;
   minStock: number;
   description?: string;
@@ -78,6 +78,7 @@ export enum PaymentType {
 
 export interface CartItem {
   productId: string;
+  product: Product;
   quantity: number;
   price: number;
 }
@@ -138,9 +139,6 @@ export interface GoodsReceiptItem {
 
 export interface GoodsReceiptItem {
   productId: string;
-  quantity: number;
-  purchasePrice: number;
-  product?: Product; // BU QATOR QO'SHILDI
 }
 
 export interface StoreSettings {
@@ -158,4 +156,6 @@ export interface StoreSettings {
     receiptShowDate: boolean;
     receiptShowSeller: boolean;
     receiptShowCustomer: boolean;
+    receiptShowQR: boolean;
+    id: string;
 }

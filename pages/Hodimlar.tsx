@@ -119,8 +119,6 @@ const Hodimlar = () => {
             try { await deleteRole(id); } catch (error) { alert("Rolni o'chirishda xatolik."); }
         }
     };
-    
-    const getRoleName = (roleId: string) => roles.find(r => r.id === roleId)?.name || 'Noma\'lum';
 
     return (
         <div className="space-y-4">
@@ -152,7 +150,7 @@ const Hodimlar = () => {
                                     <tr key={e.id} className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                                         <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{e.name}</td>
                                         <td className="px-6 py-4">{e.phone}</td>
-                                        <td className="px-6 py-4"><span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">{getRoleName(e.roleId)}</span></td>
+                                        <td className="px-6 py-4"><span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">{e.role?.name || 'Noma\'lum'}</span></td>
                                         <td className="px-6 py-4 text-right">
                                             <button onClick={() => handleOpenEmployeeModal(e)} className="p-1 text-blue-600 hover:text-blue-800"><Edit size={18} /></button>
                                             <button onClick={() => handleDeleteEmployee(e.id)} className="p-1 text-red-600 hover:text-red-800 ml-2"><Trash2 size={18} /></button>

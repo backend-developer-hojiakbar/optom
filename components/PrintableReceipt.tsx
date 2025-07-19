@@ -1,5 +1,6 @@
 import React from 'react';
 import { Sale, Product, Customer, StoreSettings, PaymentType, Employee } from '../types.ts';
+import QRCode from './QRCode.tsx';
 
 interface PrintableReceiptProps {
   sale: Sale | null;
@@ -22,20 +23,33 @@ const PrintableReceipt = React.forwardRef<HTMLDivElement, PrintableReceiptProps>
 
     const getProductName = (id: string) => products.find(p => p.id === id)?.name || 'Noma\'lum mahsulot';
 
+    const formatDate = (dateString: string) => {
+      return new Date(dateString).toLocaleString('uz-UZ', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+    };
+
     return (
-      <div id="printable-receipt" ref={ref} className="p-4 bg-white text-black font-mono text-xs w-[288px]">
-        <div className="text-center">
-          {settings.receiptShowStoreName && <h2 className="font-bold text-sm">{settings.name}</h2>}
-          {settings.receiptShowAddress && <p>{settings.address}</p>}
-          {settings.receiptShowPhone && <p>Tel: {settings.phone}</p>}
-          {settings.receiptHeader && <p className="mt-2">{settings.receiptHeader}</p>}
+      <div id="printable-receipt" ref={ref} className="p-2 bg-white text-black font-mono text-xs w-[288px]">
+        {/* Header */}
+        <div className="text-center mb-2">
+          <h2 className="font-bold text-sm mb-1">{settings.name}</h2>
+          <p className="text-xs">{settings.address}</p>
+          <p className="text-xs">Tel: {settings.phone}</p>
+          {settings.receiptHeader && <p className="mt-1">{settings.receiptHeader}</p>}
         </div>
-        <hr className="my-2 border-dashed border-black" />
-        <div>
-          {settings.receiptShowChekId && <p>Chek: #{sale.id.slice(-6)}</p>}
-          {settings.receiptShowDate && <p>Sana: {new Date(sale.date).toLocaleString('uz-UZ')}</p>}
-          {settings.receiptShowSeller && seller && <p>Sotuvchi: {seller.name}</p>}
-          {settings.receiptShowCustomer && customer && <p>Mijoz: {customer.name}</p>}
+
+        {/* Receipt Details */}
+        <div className="mb-2">
+          {settings.receiptShowChekId && <p className="text-xs">Chek: #{sale.id.slice(-6)}</p>}
+          {settings.receiptShowDate && <p className="text-xs">Sana: {formatDate(sale.date)}</p>}
+          {settings.receiptShowSeller && seller && <p className="text-xs">Sotuvchi: {seller.name}</p>}
+          {settings.receiptShowCustomer && customer && <p className="text-xs">Mijoz: {customer.name}</p>}
         </div>
         <hr className="my-2 border-dashed border-black" />
         <table className="w-full">
@@ -49,8 +63,8 @@ const PrintableReceipt = React.forwardRef<HTMLDivElement, PrintableReceiptProps>
           </thead>
           <tbody>
             {sale.items.map(item => (
-              <tr key={item.productId}>
-                <td className="text-left w-1/2">{getProductName(item.productId)}</td>
+              <tr key={item.product.id}>
+                <td className="text-left w-1/2">{getProductName(item.product.id)}</td>
                 <td className="text-right">{item.quantity}</td>
                 <td className="text-right">{item.price.toLocaleString()}</td>
                 <td className="text-right">{(item.quantity * item.price).toLocaleString()}</td>
@@ -77,6 +91,14 @@ const PrintableReceipt = React.forwardRef<HTMLDivElement, PrintableReceiptProps>
          <hr className="my-2 border-dashed border-black" />
         <div className="text-center">
             {settings.receiptFooter && <p className="mt-2">{settings.receiptFooter}</p>}
+            {settings.receiptShowQR && (
+              <QRCode
+                saleId={sale.id}
+                storeId={settings.id}
+                totalAmount={Number(sale.total)}
+                date={sale.date}
+              />
+            )}
         </div>
       </div>
     );

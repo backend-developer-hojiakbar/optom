@@ -1,10 +1,10 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext.tsx';
 import { Product, CartItem, PaymentType, Sale, Customer, SalePayment } from '../types.ts';
+import { Link } from 'react-router-dom';
 import { PlusCircle, MinusCircle, XCircle, Search, UserPlus, Printer, CheckCircle, Trash2, Home, ShoppingCart, AlertCircle } from 'lucide-react';
 import Modal from '../components/Modal.tsx';
-import PrintableReceipt from '../components/PrintableReceipt.tsx';
-import { Link } from 'react-router-dom';
+import PrintableReceipt from '../components/PrintableReceipt';
 
 const AddCustomerModal: React.FC<{
   isOpen: boolean;
@@ -148,16 +148,92 @@ const PaymentModalContent: React.FC<{
 };
 
 const Savdo = () => {
-  const { products, customers, createSale, settings, addCustomer } = useAppContext();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [isReceiptModalOpen, setReceiptModalOpen] = useState(false);
-  const [lastSale, setLastSale] = useState<Sale | null>(null);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
-  const [isAddCustomerModalOpen, setAddCustomerModalOpen] = useState(false);
-  
+  const { 
+    products, 
+    customers, 
+    addCustomer, 
+    createSale,
+    settings,
+    setSearchTerm,
+    searchTerm,
+    setSelectedCustomerId,
+    lastSale,
+    cart,
+    setCart,
+    addProductToCart,
+    removeProductFromCart,
+    updateCartItemQuantity
+  } = useAppContext();
+
+  // Clear cart function using context's cart state
+  const clearCart = () => {
+    setCart([]);
+    setDiscount(0);
+    setSelectedCustomerId(null);
+  };
+
+  // Product table row click handler
+
+
+  // Product selection handler using context's cart functions
+  const handleProductSelect = (product: Product) => {
+    if (product.stock <= 0) {
+      alert('Bu mahsulotdan qoldiq yo\'q!');
+      return;
+    }
+    
+    const existingItem = cart.find(item => item.product.id === product.id);
+    if (existingItem) {
+      updateCartItemQuantity(product.id, existingItem.quantity + 1);
+    } else {
+      addProductToCart(product, 1);
+    }
+  };
+
+  const [selectedCustomer, setSelectedCustomer] = useState<string | undefined>(undefined);
+  const [isAddCustomerModalOpen, setIsAddCustomerModalOpen] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
+
+  // Cart item rendering helper
+  const getProductName = (id: string) => products.find(p => p.id === id)?.name || ''; 
+  const lastSaleCustomer = useMemo(() => lastSale?.customerId ? customers.find(c => c.id === lastSale.customerId) || null : null, [lastSale, customers]);
+  const handleAddNewCustomer = (customer: Customer) => setSelectedCustomerId(customer.id);
+
+  const handleProcessPayment = async (payments: SalePayment[]) => {
+    if (cart.length === 0) return;
+    
+    try {
+      const saleData: Omit<Sale, 'id' | 'date' | 'seller'> = { 
+        items: cart.map(item => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+          price: item.price,
+          product: item.product
+        })) as CartItem[],
+        subtotal: subtotal,
+        discount: discount,
+        total: total,
+        payments,
+        customerId: selectedCustomer
+      };
+      
+      await createSale(saleData);
+      setIsPaymentModalOpen(false);
+      setIsReceiptModalOpen(true);
+      clearCart();
+      setTimeout(() => handlePrint(), 300);
+    } catch(error: any) {
+      console.error("Savdo yaratishda xatolik:", error.response?.data || error.message);
+      const errorMessages = error.response?.data ? 
+          Object.entries(error.response.data).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`).join('\n')
+          : "Noma'lum server xatoligi.";
+      alert(`Xatolik yuz berdi:\n\n${errorMessages}`);
+      setIsPaymentProcessing(false);
+    }
+  };
 
   const filteredProducts = useMemo(() =>
     products.filter(p =>
@@ -197,68 +273,17 @@ const Savdo = () => {
     }
   };
   
-  const addToCart = (product: Product) => {
-    const existingItem = cart.find(item => item.productId === product.id);
-    const requestedQty = (existingItem?.quantity || 0) + 1;
-    if (requestedQty > product.stock) {
-        alert(`'${product.name}' mahsuloti uchun omborda yetarli qoldiq yo'q.\nQoldiq: ${product.stock}`);
-        return;
-    }
-    if (existingItem) {
-        setCart(cart.map(item => item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item));
-    } else {
-        setCart([...cart, { productId: product.id, quantity: 1, price: Number(product.salePrice) }]);
-    }
-  };
 
-  const updateQuantity = (productId: string, newQuantity: number) => {
-    const product = products.find(p => p.id === productId);
-    if (product && newQuantity > product.stock) {
-        alert(`'${product.name}' mahsuloti uchun omborda yetarli qoldiq yo'q.\nQoldiq: ${product.stock}`);
-        return;
-    }
-    if (newQuantity <= 0) {
-      removeFromCart(productId);
-    } else {
-      setCart(cart.map(item => item.productId === productId ? { ...item, quantity: newQuantity } : item));
-    }
-  };
-
-  const removeFromCart = (productId: string) => setCart(cart.filter(item => item.productId !== productId));
-  const clearCart = () => { setCart([]); setDiscount(0); setSelectedCustomerId(''); }
 
   const subtotal = useMemo(() => cart.reduce((acc, item) => acc + item.price * item.quantity, 0), [cart]);
   const [discount, setDiscount] = useState(0);
   const total = useMemo(() => subtotal - discount, [subtotal, discount]);
-  
-  const handleProcessPayment = async (payments: SalePayment[]) => {
-    if (cart.length === 0) return;
-    const saleData = { items: cart, subtotal, discount, total, payments, customerId: selectedCustomerId || undefined };
-    try {
-        const createdSale = await createSale(saleData);
-        setLastSale(createdSale);
-        setPaymentModalOpen(false);
-        setReceiptModalOpen(true);
-        clearCart();
-        setTimeout(() => handlePrint(), 300);
-    } catch(error: any) {
-        console.error("Savdoni amalga oshirishda xatolik:", error.response?.data || error.message);
-        const errorMessages = error.response?.data ? 
-            Object.entries(error.response.data).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`).join('\n')
-            : "Noma'lum server xatoligi.";
-        alert(`Xatolik yuz berdi:\n\n${errorMessages}`);
-    }
-  };
-
-  const getProductName = (id: string) => products.find(p => p.id === id)?.name || '';
-  const lastSaleCustomer = useMemo(() => lastSale?.customerId ? customers.find(c => c.id === lastSale.customerId) || null : null, [lastSale, customers]);
-  const handleAddNewCustomer = (customer: Customer) => setSelectedCustomerId(customer.id);
 
   if (!settings) return <div>Yuklanmoqda...</div>
 
   return (
     <div className="flex flex-col h-screen bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
-        <AddCustomerModal isOpen={isAddCustomerModalOpen} onClose={() => setAddCustomerModalOpen(false)} onSave={handleAddNewCustomer} />
+        <AddCustomerModal isOpen={isAddCustomerModalOpen} onClose={() => setIsAddCustomerModalOpen(false)} onSave={handleAddNewCustomer} />
         
         <header className="flex-shrink-0 flex items-center justify-between p-4 bg-white dark:bg-gray-800 shadow-md z-10">
             <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Savdo Terminali</h1>
@@ -283,7 +308,7 @@ const Savdo = () => {
                         </thead>
                         <tbody className="text-lg">
                             {filteredProducts.map(product => (
-                            <tr key={product.id} onClick={() => addToCart(product)} className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer">
+                            <tr key={product.id} onClick={() => handleProductSelect(product)} className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer">
                                 <td className="px-6 py-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">{product.name}</td>
                                 <td className={`px-6 py-4 ${product.stock <= product.minStock ? 'text-red-500 font-bold' : ''}`}>{product.stock} {product.unit}</td>
                                 <td className="px-6 py-4 font-bold text-blue-600 dark:text-blue-400">{Number(product.salePrice).toLocaleString()}</td>
@@ -299,25 +324,28 @@ const Savdo = () => {
                 </div>
                 <div className="flex-grow overflow-y-auto p-4 space-y-3">
                 {cart.length === 0 ? (<div className="flex flex-col items-center justify-center h-full text-gray-400"><ShoppingCart size={64} /><p className="mt-4 text-lg">Savatcha bo'sh</p></div>) 
-                : (cart.map(item => { const productInCart = products.find(p => p.id === item.productId); const isStockLow = productInCart && item.quantity > productInCart.stock;
-                    return (
-                    <div key={item.productId} className={`flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 ${isStockLow ? 'bg-red-500/10' : ''}`}>
-                        <div className="flex-grow">
-                            <p className="font-semibold">{getProductName(item.productId)}</p>
-                            <div className="flex items-center gap-2">
-                                <p className="text-sm text-gray-500">{item.price.toLocaleString()} x {item.quantity}</p>
-                                {isStockLow && <AlertCircle className="h-4 w-4 text-red-500" title={`Qoldiqda yetarli emas! Mavjud: ${productInCart.stock}`}/>}
-                            </div>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                            <button onClick={() => updateQuantity(item.productId, item.quantity - 1)}><MinusCircle size={22} className="text-red-500" /></button>
-                            <input type="number" value={item.quantity} onChange={(e) => updateQuantity(item.productId, parseInt(e.target.value) || 0)} className="text-lg font-bold w-12 text-center bg-transparent border-b dark:border-gray-600 focus:outline-none" />
-                            <button onClick={() => updateQuantity(item.productId, item.quantity + 1)}><PlusCircle size={22} className="text-green-500" /></button>
-                        </div>
-                        <p className="font-bold w-28 text-right text-lg">{(item.price * item.quantity).toLocaleString()}</p>
-                        <button onClick={() => removeFromCart(item.productId)}><XCircle size={22} className="text-gray-400 hover:text-red-500" /></button>
-                    </div>
-                )}))}
+                : (cart.map((item: CartItem) => {
+                     const productInCart = products.find(p => p.id === item.productId);
+                     const isStockLow = productInCart && item.quantity > productInCart.stock;
+                     return (
+                         <div key={item.productId} className={`flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 ${isStockLow ? 'bg-red-500/10' : ''}`}>
+                             <div className="flex-grow">
+                                 <p className="font-semibold">{getProductName(item.productId)}</p>
+                                 <div className="flex items-center gap-2">
+                                     <p className="text-sm text-gray-500">{item.price.toLocaleString()} x {item.quantity}</p>
+                                     {isStockLow && <AlertCircle className="h-4 w-4 text-red-500" />}
+                                 </div>
+                             </div>
+                             <div className="flex items-center space-x-3">
+                                 <button onClick={() => updateCartItemQuantity(item.productId, item.quantity - 1)}><MinusCircle size={22} className="text-red-500" /></button>
+                                 <input type="number" value={item.quantity} onChange={(e) => updateCartItemQuantity(item.productId, parseInt(e.target.value) || 0)} className="text-lg font-bold w-12 text-center bg-transparent border-b dark:border-gray-600 focus:outline-none" />
+                                 <button onClick={() => updateCartItemQuantity(item.productId, item.quantity + 1)}><PlusCircle size={22} className="text-green-500" /></button>
+                             </div>
+                             <p className="font-bold w-28 text-right text-lg">{(item.price * item.quantity).toLocaleString()}</p>
+                             <button onClick={() => removeProductFromCart(item.productId)}><XCircle size={22} className="text-gray-400 hover:text-red-500" /></button>
+                         </div>
+                     );
+                 }))} 
                 </div>
             </div>
             <div className="w-3/12 flex flex-col bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 space-y-6">
@@ -325,11 +353,11 @@ const Savdo = () => {
                     <div>
                         <h3 className="text-xl font-semibold mb-2">Mijoz</h3>
                          <div className="flex items-center space-x-2">
-                            <select value={selectedCustomerId} onChange={e => setSelectedCustomerId(e.target.value)} className="w-full p-3 border rounded-md dark:bg-gray-700 dark:border-gray-600 text-base">
+                            <select value={selectedCustomer} onChange={e => setSelectedCustomer(e.target.value)} className="w-full p-3 border rounded-md dark:bg-gray-700 dark:border-gray-600 text-base">
                                 <option value="">Umumiy mijoz</option>
                                 {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
-                            <button onClick={() => setAddCustomerModalOpen(true)} className="p-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex-shrink-0"><UserPlus size={20}/></button>
+                            <button onClick={() => setIsAddCustomerModalOpen(true)} className="p-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex-shrink-0"><UserPlus size={20}/></button>
                         </div>
                     </div>
                     <div>
@@ -343,16 +371,16 @@ const Savdo = () => {
                 </div>
                 <div className="flex-shrink-0 space-y-3">
                     <button onClick={clearCart} disabled={cart.length === 0} className="w-full py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 text-lg font-semibold flex items-center justify-center gap-2 disabled:opacity-50"><Trash2 size={20} /> Bekor qilish</button>
-                    <button onClick={() => setPaymentModalOpen(true)} disabled={cart.length === 0} className="w-full py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 font-semibold text-lg disabled:opacity-50">To'lov</button>
+                    <button onClick={() => setIsPaymentModalOpen(true)} disabled={cart.length === 0} className="w-full py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 font-semibold text-lg disabled:opacity-50">To'lov</button>
                 </div>
             </div>
         </main>
         
-        <Modal isOpen={isPaymentModalOpen} onClose={() => setPaymentModalOpen(false)} title="To'lovni qabul qilish" size="lg">
-            <PaymentModalContent totalAmount={total} customerId={selectedCustomerId} onProcessPayment={handleProcessPayment} />
+        <Modal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} title="To'lovni qabul qilish" size="lg">
+            <PaymentModalContent totalAmount={total} customerId={selectedCustomer} onProcessPayment={handleProcessPayment} />
         </Modal>
         
-        <Modal isOpen={isReceiptModalOpen} onClose={() => setReceiptModalOpen(false)} title="Savdo yakunlandi" size="sm">
+        <Modal isOpen={isReceiptModalOpen} onClose={() => setIsReceiptModalOpen(false)} title="Savdo yakunlandi" size="sm">
             <div className="text-center">
                 <CheckCircle className="h-20 w-20 text-green-500 mx-auto mb-4" />
                 <h3 className="text-xl font-medium">Muvaffaqiyatli!</h3>
@@ -361,7 +389,7 @@ const Savdo = () => {
                     <PrintableReceipt ref={receiptRef} sale={lastSale} products={products} customer={lastSaleCustomer} settings={settings} seller={lastSale?.seller} />
                 </div>
                 <div className="flex space-x-4">
-                    <button onClick={() => setReceiptModalOpen(false)} className="w-full py-3 bg-gray-300 text-gray-800 dark:bg-gray-600 dark:text-gray-200 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 font-semibold">Yopish</button>
+                    <button onClick={() => setIsReceiptModalOpen(false)} className="w-full py-3 bg-gray-300 text-gray-800 dark:bg-gray-600 dark:text-gray-200 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 font-semibold">Yopish</button>
                     <button onClick={handlePrint} className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center font-semibold">
                         <Printer size={20} className="mr-2" />
                         Chekni qayta chop etish
