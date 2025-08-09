@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext.tsx';
-import { Customer, PaymentType } from '../types.ts';
+import { Customer, PaymentType, Sale } from '../types.ts';
 import Modal from '../components/Modal.tsx';
-import { PlusCircle, Edit, Trash2, Eye } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Eye, DollarSign, RefreshCw } from 'lucide-react';
 
 const CustomerForm: React.FC<{ customer?: Customer; onSave: (customer: Partial<Customer>) => void; onClose: () => void }> = ({ customer, onSave, onClose }) => {
     const [formData, setFormData] = useState({ name: customer?.name || '', phone: customer?.phone || '', address: customer?.address || '' });
@@ -39,7 +39,12 @@ const DebtPaymentForm: React.FC<{ customer: Customer; onClose: () => void }> = (
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (amount <= 0 || amount > customerDebt) { alert("Noto'g'ri summa kiritildi."); return; }
-        try { await payDebt(customer.id, amount, paymentType); onClose(); } catch (error) { alert("To'lovni amalga oshirishda xatolik"); }
+        try { 
+            await payDebt(customer.id, amount, paymentType); 
+            onClose(); 
+        } catch (error) { 
+            alert("To'lovni amalga oshirishda xatolik"); 
+        }
     };
 
     return (
@@ -92,11 +97,13 @@ const CustomerDetailsModal: React.FC<{ customer: Customer; onClose: () => void; 
                  <p className="mt-2 text-xl">Joriy qarz: <span className="font-bold text-red-500">{Number(customer.debt).toLocaleString()} so'm</span></p>
             </div>
             <div className="flex justify-end mb-4">
-                <button onClick={onOpenPayment} className="px-4 py-2 bg-green-600 text-white rounded-md">Qarz to'lovini qabul qilish</button>
+                <button onClick={onOpenPayment} disabled={Number(customer.debt) <= 0} className="px-4 py-2 bg-green-600 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
+                    Qarz to'lovini qabul qilish
+                </button>
             </div>
             <h5 className="font-semibold mb-2">Qarz tarixi</h5>
             <div className="max-h-64 overflow-y-auto space-y-2">
-                {history.map((item, index) => (
+                {history.length > 0 ? history.map((item, index) => (
                     <div key={`${item.date}-${index}`} className={`flex justify-between p-2 rounded-md ${item.type === 'nasiya' ? 'bg-red-50 dark:bg-red-900/50' : 'bg-green-50 dark:bg-green-900/50'}`}>
                         <div>
                             <p className="font-medium">{item.type === 'nasiya' ? "Nasiyaga savdo" : "Qarz to'lovi"}</p>
@@ -106,7 +113,7 @@ const CustomerDetailsModal: React.FC<{ customer: Customer; onClose: () => void; 
                             {item.type === 'nasiya' ? '+' : '-'} {item.amount.toLocaleString()} so'm
                         </p>
                     </div>
-                ))}
+                )) : <p className="text-center text-gray-500">Tarix mavjud emas.</p>}
             </div>
              <div className="flex justify-end pt-4 mt-4 border-t dark:border-gray-600">
                 <button onClick={onClose} className="px-4 py-2 bg-gray-200 dark:bg-gray-600 rounded-md">Yopish</button>
@@ -116,7 +123,7 @@ const CustomerDetailsModal: React.FC<{ customer: Customer; onClose: () => void; 
 };
 
 const Mijozlar = () => {
-    const { customers, addCustomer, updateCustomer, deleteCustomer } = useAppContext();
+    const { customers, addCustomer, updateCustomer, deleteCustomer, reloadData, isDataLoading } = useAppContext();
     const [isFormModalOpen, setFormModalOpen] = useState(false);
     const [isDetailsModalOpen, setDetailsModalOpen] = useState(false);
     const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -125,7 +132,7 @@ const Mijozlar = () => {
 
     const handleOpenFormModal = (customer?: Customer) => { setSelectedCustomer(customer); setFormModalOpen(true); };
     const handleOpenDetailsModal = (customer: Customer) => { setSelectedCustomer(customer); setDetailsModalOpen(true); };
-    const handleOpenPaymentModal = () => { setDetailsModalOpen(false); setPaymentModalOpen(true); };
+    const handleOpenPaymentModal = (customer: Customer) => { setSelectedCustomer(customer); setDetailsModalOpen(false); setPaymentModalOpen(true); };
     const handleCloseAllModals = () => { setSelectedCustomer(undefined); setFormModalOpen(false); setDetailsModalOpen(false); setPaymentModalOpen(false); };
 
     const handleSaveCustomer = async (customerData: Partial<Customer>) => {
@@ -141,12 +148,25 @@ const Mijozlar = () => {
         }
     };
 
+    const handleRefresh = async () => {
+        try {
+            await reloadData();
+        } catch (error) {
+            alert("Ma'lumotlarni yangilashda xatolik yuz berdi.");
+        }
+    };
+
     const filteredCustomers = customers.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center">
-                <input type="text" placeholder="Mijoz qidirish..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600" />
+                <div className="flex items-center gap-4">
+                    <input type="text" placeholder="Mijoz qidirish..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600" />
+                    <button onClick={handleRefresh} disabled={isDataLoading} className="p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 disabled:opacity-50">
+                        <RefreshCw className={`h-5 w-5 ${isDataLoading ? 'animate-spin' : ''}`} />
+                    </button>
+                </div>
                 <button onClick={() => handleOpenFormModal()} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
                     <PlusCircle size={18} className="mr-2" />
                     Yangi mijoz
@@ -169,7 +189,15 @@ const Mijozlar = () => {
                                 <td className="px-6 py-4">{c.phone}</td>
                                 <td className={`px-6 py-4 font-bold ${Number(c.debt) > 0 ? 'text-red-500' : 'text-green-500'}`}>{Number(c.debt).toLocaleString()} so'm</td>
                                 <td className="px-6 py-4 text-right">
-                                    <button onClick={() => handleOpenDetailsModal(c)} className="p-1 text-gray-600 dark:text-gray-300 hover:text-gray-800"><Eye size={18} /></button>
+                                    <button onClick={() => handleOpenDetailsModal(c)} className="p-1 text-gray-600 dark:text-gray-300 hover:text-gray-800" title="Qarz tarixini ko'rish"><Eye size={18} /></button>
+                                    <button 
+                                        onClick={() => handleOpenPaymentModal(c)} 
+                                        className="p-1 text-green-600 hover:text-green-800 ml-2 disabled:opacity-30 disabled:cursor-not-allowed"
+                                        disabled={Number(c.debt) <= 0}
+                                        title="Qarz uchun to'lov"
+                                    >
+                                        <DollarSign size={18} />
+                                    </button>
                                     <button onClick={() => handleOpenFormModal(c)} className="p-1 text-blue-600 hover:text-blue-800 ml-2"><Edit size={18} /></button>
                                     <button onClick={() => handleDeleteCustomer(c.id)} className="p-1 text-red-600 hover:text-red-800 ml-2"><Trash2 size={18} /></button>
                                 </td>
@@ -182,7 +210,7 @@ const Mijozlar = () => {
                 <CustomerForm customer={selectedCustomer} onSave={handleSaveCustomer} onClose={handleCloseAllModals} />
             </Modal>
              <Modal isOpen={isDetailsModalOpen && !!selectedCustomer} onClose={handleCloseAllModals} title="Mijoz ma'lumotlari" size="lg">
-                {selectedCustomer && <CustomerDetailsModal customer={selectedCustomer} onClose={handleCloseAllModals} onOpenPayment={handleOpenPaymentModal} />}
+                {selectedCustomer && <CustomerDetailsModal customer={selectedCustomer} onClose={handleCloseAllModals} onOpenPayment={() => handleOpenPaymentModal(selectedCustomer)} />}
             </Modal>
             <Modal isOpen={isPaymentModalOpen && !!selectedCustomer} onClose={handleCloseAllModals} title="Qarz to'lovini qabul qilish" size="sm">
                 {selectedCustomer && <DebtPaymentForm customer={selectedCustomer} onClose={handleCloseAllModals} />}

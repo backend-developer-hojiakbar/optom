@@ -235,14 +235,32 @@ const Savdo = () => {
     }
   };
 
-  const filteredProducts = useMemo(() =>
-    products.filter(p =>
-      p.status === 'active' && (
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (p.barcode && p.barcode.includes(searchTerm))
-      )
-    ), [products, searchTerm]
-  );
+  const filteredProducts = useMemo(() => {
+    // Agar qidiruv maydoni bo'sh bo'lsa, barcha aktiv mahsulotlarni qaytaramiz
+    if (!searchTerm) {
+        return products.filter(p => p.status === 'active');
+    }
+    
+    // Qidiruv matnini kichik harflarga o'tkazamiz
+    const lowerCaseSearchTerm = searchTerm.toLowerCase();
+    
+    // Har bir mahsulotni tekshiramiz
+    return products.filter(p => {
+      // Faqat 'active' statusidagi mahsulotlarni qoldiramiz
+      if (p.status !== 'active') {
+        return false;
+      }
+      
+      // Mahsulot nomi bo'yicha qidirish (agar nom mavjud bo'lsa)
+      const nameMatch = p.name && p.name.toLowerCase().includes(lowerCaseSearchTerm);
+      
+      // Shtrix-kod bo'yicha qidirish (agar shtrix-kod mavjud bo'lsa)
+      const barcodeMatch = p.barcode && p.barcode.includes(lowerCaseSearchTerm);
+      
+      // Nom yoki shtrix-kod mos kelsa, mahsulotni ro'yxatda qoldiramiz
+      return nameMatch || barcodeMatch;
+    });
+  }, [products, searchTerm]);
 
   const handlePrint = () => {
     const receiptContent = receiptRef.current?.innerHTML;

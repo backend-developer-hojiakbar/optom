@@ -3,7 +3,7 @@ import { useAppContext } from '../context/AppContext.tsx';
 import { Sale, PaymentType } from '../types.ts';
 import Modal from '../components/Modal.tsx';
 import PrintableReceipt from '../components/PrintableReceipt.tsx';
-import { Eye, Printer } from 'lucide-react';
+import { Eye, Printer, Trash2 } from 'lucide-react';
 
 const paymentTypeLabels: { [key in PaymentType]: string } = {
     [PaymentType.CASH]: "Naqd",
@@ -13,7 +13,7 @@ const paymentTypeLabels: { [key in PaymentType]: string } = {
 };
 
 const SavdolarTarixi = () => {
-    const { sales, customers, products, settings, employees } = useAppContext();
+    const { sales, customers, products, settings, employees, returnSale } = useAppContext();
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
     const [isModalOpen, setModalOpen] = useState(false);
     const [filters, setFilters] = useState({
@@ -36,6 +36,17 @@ const SavdolarTarixi = () => {
           printWindow?.document.close();
           printWindow?.print();
       }
+    };
+
+    const handleReturnSale = async (saleId: string) => {
+        if (window.confirm("Haqiqatan ham bu savdoni qaytarmoqchimisiz? Mahsulotlar omborga qaytariladi va mijoz qarzi (agar bo'lsa) kamaytiriladi.")) {
+            try {
+                await returnSale(saleId);
+                alert("Savdo muvaffaqiyatli qaytarildi!");
+            } catch (error: any) {
+                alert(`Xatolik: ${error.response?.data?.error || "Savdoni qaytarishda xatolik yuz berdi."}`);
+            }
+        }
     };
 
     const filteredSales = useMemo(() => {
@@ -96,23 +107,27 @@ const SavdolarTarixi = () => {
                             <th scope="col" className="px-6 py-3">Chek #</th>
                             <th scope="col" className="px-6 py-3">Sana</th>
                             <th scope="col" className="px-6 py-3">Mijoz</th>
-                            <th scope="col" className="px-6 py-3">Sotuvchi</th>
                             <th scope="col" className="px-6 py-3">Jami Summa</th>
-                            <th scope="col" className="px-6 py-3">To'lov Turi</th>
+                            <th scope="col" className="px-6 py-3">Holati</th>
                             <th scope="col" className="px-6 py-3 text-right">Amallar</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredSales.map(sale => (
-                            <tr key={sale.id} className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                            <tr key={sale.id} className={`border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 ${sale.status === 'returned' ? 'bg-red-50 dark:bg-red-900/20 text-gray-400 line-through' : 'bg-white dark:bg-gray-800'}`}>
                                 <td className="px-6 py-4 font-mono text-xs">{sale.id.slice(-6)}</td>
                                 <td className="px-6 py-4">{new Date(sale.date).toLocaleString('uz-UZ')}</td>
                                 <td className="px-6 py-4 font-medium">{sale.customer?.name || 'Umumiy'}</td>
-                                <td className="px-6 py-4">{sale.seller?.name || 'Noma\'lum'}</td>
+                                
                                 <td className="px-6 py-4 font-bold">{Number(sale.total).toLocaleString()} {settings.currency}</td>
-                                <td className="px-6 py-4">{sale.payments.map(p => paymentTypeLabels[p.type]).join(', ')}</td>
+                                <td className="px-6 py-4">
+                                    <span className={`px-2 py-1 text-xs rounded-full ${sale.status === 'returned' ? 'bg-red-200 text-red-800' : 'bg-green-200 text-green-800'}`}>
+                                        {sale.status === 'returned' ? 'Qaytarilgan' : 'Yakunlangan'}
+                                    </span>
+                                </td>
                                 <td className="px-6 py-4 text-right">
-                                    <button onClick={() => handleViewReceipt(sale)} className="p-1 text-blue-600 hover:text-blue-800"><Eye size={18} /></button>
+                                    <button onClick={() => handleViewReceipt(sale)} className="p-1 text-blue-600 hover:text-blue-800 disabled:opacity-30" title="Chekni ko'rish"><Eye size={18} /></button>
+                                    <button onClick={() => handleReturnSale(sale.id)} disabled={sale.status === 'returned'} className="p-1 text-red-600 hover:text-red-800 ml-2 disabled:opacity-30" title="Savdoni qaytarish"><Trash2 size={18} /></button>
                                 </td>
                             </tr>
                         ))}

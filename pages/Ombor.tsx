@@ -188,24 +188,32 @@ const KirimlarList = () => {
                         <th scope="col" className="px-6 py-3">Sana</th>
                         <th scope="col" className="px-6 py-3">Hujjat #</th>
                         <th scope="col" className="px-6 py-3">Yetkazib Beruvchi</th>
-                        <th scope="col" className="px-6 py-3">Mahsulotlar soni</th>
+                        <th scope="col" className="px-6 py-3">Mahsulot Miqdori</th>
                         <th scope="col" className="px-6 py-3">Jami summa</th>
                         <th scope="col" className="px-6 py-3 text-right">Amallar</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {goodsReceipts.map(receipt => (
-                        <tr key={receipt.id} className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                            <td className="px-6 py-4">{new Date(receipt.date).toLocaleDateString('uz-UZ')}</td>
-                            <td className="px-6 py-4">{receipt.docNumber || receipt.id.slice(-6)}</td>
-                            <td className="px-6 py-4 font-medium">{receipt.supplier?.name || 'Noma\'lum'}</td>
-                            <td className="px-6 py-4">{receipt.items.length}</td>
-                            <td className="px-6 py-4 font-bold">{Number(receipt.totalAmount).toLocaleString()} {settings.currency}</td>
-                            <td className="px-6 py-4 text-right">
-                                <button onClick={() => setSelectedReceipt(receipt)} className="p-1 text-blue-600 hover:text-blue-800"><Eye size={18} /></button>
-                            </td>
-                        </tr>
-                    ))}
+                    {goodsReceipts.map(receipt => {
+                        // BU YERDA YIG'INDINI HISOBALYMIZ
+                        const totalQuantity = receipt.items.reduce((sum, item) => sum + item.quantity, 0);
+
+                        return (
+                            <tr key={receipt.id} className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                <td className="px-6 py-4">{new Date(receipt.date).toLocaleDateString('uz-UZ')}</td>
+                                <td className="px-6 py-4">{receipt.docNumber || receipt.id.slice(-6)}</td>
+                                <td className="px-6 py-4 font-medium">{receipt.supplier?.name || 'Noma\'lum'}</td>
+                                
+                                {/* BU QATOR O'ZGARDI */}
+                                <td className="px-6 py-4 font-semibold">{totalQuantity}</td> 
+
+                                <td className="px-6 py-4 font-bold">{Number(receipt.totalAmount).toLocaleString()} {settings.currency}</td>
+                                <td className="px-6 py-4 text-right">
+                                    <button onClick={() => setSelectedReceipt(receipt)} className="p-1 text-blue-600 hover:text-blue-800"><Eye size={18} /></button>
+                                </td>
+                            </tr>
+                        );
+                    })}
                 </tbody>
             </table>
             <Modal isOpen={!!selectedReceipt} onClose={() => setSelectedReceipt(null)} title="Kirim Hujjati Tafsilotlari" size="lg">
@@ -234,7 +242,7 @@ const KirimlarList = () => {
                 )}
             </Modal>
         </div>
-    )
+    );
 };
 
 
@@ -255,4 +263,4 @@ const Ombor = () => {
     );
 };
 
-export default Ombor;
+export default Ombor; 
