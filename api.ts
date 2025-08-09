@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const api = axios.create({
     // .env faylidan o'qish o'rniga manzil to'g'ridan-to'g'ri yozildi
-    baseURL: 'http://127.0.0.1:8000/api', 
+    baseURL: 'http://suvapi.florix.uz/api', 
 });
 
 // Bu qism o'zgarishsiz qoladi, u har bir so'rovga avtorizatsiya tokenini qo'shib beradi
